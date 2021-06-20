@@ -84,6 +84,10 @@ interface BarSettings {
     xAxis: {
         fontSize: number;
     }
+
+    label: {
+        fontSize: number;
+    }
 }
 
 let defaultSettings: BarSettings = {
@@ -92,6 +96,9 @@ let defaultSettings: BarSettings = {
         width: 100,
     },
     xAxis: {
+        fontSize: 14,
+    },
+    label: {
         fontSize: 14,
     }
 }
@@ -140,6 +147,9 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         },
         xAxis: {
             fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize)
+        },
+        label: {
+            fontSize: getValue<number>(objects, 'label', 'fontSize', defaultSettings.xAxis.fontSize)
         }
     }
     debugger;
@@ -282,10 +292,10 @@ export class Visual implements IVisual {
         
         barsMerged.select('.label')
             .attr("x", d => x(d.startDate) + (x(d.endDate) - x(d.startDate))/2)
-            .attr("y", d => y(d.category) + y.bandwidth() - (14/2))
+            .attr("y", d => y(d.category) + y.bandwidth() - (settings.label.fontSize/2))
             .text(d => d.label)
             .style("fill", "white")
-            .style("font-size", 14)
+            .style("font-size", settings.label.fontSize)
             .style("text-anchor", "middle");
         
         barsMerged.select('.box')
@@ -369,6 +379,15 @@ export class Visual implements IVisual {
                         properties: {
                             fontSize: this.barSettings.yAxis.fontSize,
                             width: this.barSettings.yAxis.width,
+                        },
+                        selector: null
+                    });
+                    break;
+                case 'label':
+                    objectEnumeration.push({
+                        objectName: objectName,
+                        properties: {
+                            fontSize: this.barSettings.label.fontSize
                         },
                         selector: null
                     });

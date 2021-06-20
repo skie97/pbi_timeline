@@ -68,6 +68,19 @@
                     }
                 }
             }
+        },
+        "label": {
+            "displayName": "Label",
+            "properties": {
+                "fontSize": {
+                    "displayName": "Text Size",
+                    "type": {
+                        "formatting": {
+                            "fontSize": true
+                        }
+                    }
+                }
+            }
         }
     },
     "dataViewMappings": [

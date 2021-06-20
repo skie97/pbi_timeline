@@ -7,4 +7,3 @@ Anyhow, the visual works and is a good first cut.
 
 ### TODO:
 - Custom colours for different labels
-- Fontsize for label 

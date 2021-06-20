@@ -33,41 +33,291 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
 import VisualObjectInstance = powerbi.VisualObjectInstance;
+import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import DataView = powerbi.DataView;
+import DataViewTable = powerbi.DataViewTable;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import * as d3 from "d3";
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+type Selection<T extends d3.BaseType> = d3.Selection<T, any, any, any>;
+import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
+import PrimitiveValue = powerbi.PrimitiveValue;
+import ISelectionId = powerbi.visuals.ISelectionId;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import { dataRoleHelper } from "powerbi-visuals-utils-dataviewutils";
+import { getValue, getCategoricalObjectValue } from "./objectEnumerationUtility";
+import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
+import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
+import Fill = powerbi.Fill;
 
-import { VisualSettings } from "./settings";
+import {color, Primitive} from "d3";
+
+interface BarViewModel {
+    data: BarData[];
+    minDate: Date;
+    maxDate: Date;
+    labelSettings: {};
+    settings: BarSettings;
+}
+
+interface BarData {
+    startDate: Date;
+    endDate: Date;
+    category: string;
+    label: string;
+    selectionId: ISelectionId;
+    color: BarLabelSetting;
+}
+
+interface BarLabelSetting{
+    name: string;
+    color: string;
+    selectionId: ISelectionId;
+}
+
+interface BarSettings {
+    yAxis: {
+        fontSize: number;
+        width: number;
+    }
+
+    xAxis: {
+        fontSize: number;
+    }
+}
+
+let defaultSettings: BarSettings = {
+    yAxis: {
+        fontSize: 20,
+        width: 100,
+    },
+    xAxis: {
+        fontSize: 14,
+    }
+}
+
+function getTableViewIndex(metaDataCols: DataViewMetadataColumn[], roleName: string): number {
+    for (let col of metaDataCols) {
+        if (roleName in col.roles) {
+            return col.index
+        }
+    }
+    return null;
+}
+
+function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarViewModel {
+    let dataViews = options.dataViews;
+    let viewModel: BarViewModel = {
+        data: [],
+        labelSettings: {},
+        minDate: new Date(),
+        maxDate: new Date(),
+        settings: <BarSettings>{}
+    }
+
+    if (!dataViews
+        || !dataViews[0]
+        || !dataViews[0].table
+        || !dataViews[0].table.columns
+        || !dataViews[0].table.rows
+        || dataViews[0].table.columns.length != 4) {
+        return viewModel;
+    }
+
+    const tableDataview: DataViewTable = dataViews[0].table;
+    let catIndex = getTableViewIndex(dataViews[0].metadata.columns,"category");
+    let labelIndex = getTableViewIndex(dataViews[0].metadata.columns,"label");
+    let startDateIndex = getTableViewIndex(dataViews[0].metadata.columns,"startDate");
+    let endDateIndex = getTableViewIndex(dataViews[0].metadata.columns,"endDate");
+
+    let colorPalette: ISandboxExtendedColorPalette = host.colorPalette;
+    let objects = dataViews[0].metadata.objects;
+
+    let barSettings: BarSettings = {
+        yAxis: {
+            width: getValue<number>(objects, 'yAxis', 'width', defaultSettings.yAxis.width),
+            fontSize: getValue<number>(objects, 'yAxis', 'fontSize', defaultSettings.yAxis.fontSize)
+        },
+        xAxis: {
+            fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize)
+        }
+    }
+    debugger;
+
+    tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
+        let labelText = String(row[labelIndex]);
+        if (!(labelText in viewModel.labelSettings)) {
+            viewModel.labelSettings[labelText] = {
+                name: labelText,
+                color: getLabelColorByLabelText(labelText, colorPalette),
+                selectionId: host.createSelectionIdBuilder()
+                    .withTable(tableDataview, rowIndex)
+                    .createSelectionId()
+            }
+        }
+        let bar:BarData = {
+            category: String(row[catIndex]),
+            label: String(row[labelIndex]),
+            startDate: new Date(<string>row[startDateIndex]),
+            endDate: new Date(<string>row[endDateIndex]),
+            selectionId: host.createSelectionIdBuilder()
+                .withTable(tableDataview, rowIndex)
+                .createSelectionId(),
+            color: viewModel.labelSettings[labelText]
+        }
+        viewModel.data.push(bar);
+        viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
+        viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
+    });
+
+    viewModel.data.sort((a,b) => {
+        if (a.category < b.category) return -1;
+        if (a.category > b.category) return 1;
+        return 0;
+    })
+    viewModel.settings = barSettings;
+    return viewModel;
+}
+
+function getLabelColorByLabelText(
+    labelText: string,
+    colorPalette: ISandboxExtendedColorPalette,
+): string {
+    if (colorPalette.isHighContrast) {
+        return colorPalette.background.value;
+    }
+
+    const defaultColor: powerbi.Fill = {
+        solid: {
+            color: colorPalette.getColor(labelText).value,
+        }
+    };
+
+    return defaultColor.solid.color;
+}
+
 export class Visual implements IVisual {
-    private target: HTMLElement;
-    private updateCount: number;
-    private settings: VisualSettings;
-    private textNode: Text;
+    private svg: Selection<SVGElement>;
+    private timelineContainer: Selection<SVGElement>;
+    private host: IVisualHost;
+    private yAxis: Selection<SVGElement>;
+    private xAxis: Selection<SVGElement>;
+    private xAxis_Gridlines: Selection<SVGElement>;
+    private selectionManager: ISelectionManager;
+    private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>;
+    private barSettings: BarSettings;
+    private barLabelSetting: {};
 
     constructor(options: VisualConstructorOptions) {
-        console.log('Visual constructor', options);
-        this.target = options.element;
-        this.updateCount = 0;
-        if (document) {
-            const new_p: HTMLElement = document.createElement("p");
-            new_p.appendChild(document.createTextNode("Update count:"));
-            const new_em: HTMLElement = document.createElement("em");
-            this.textNode = document.createTextNode(this.updateCount.toString());
-            new_em.appendChild(this.textNode);
-            new_p.appendChild(new_em);
-            this.target.appendChild(new_p);
-        }
+        this.svg = d3.select(options.element).append('svg');
+        this.host = options.host;
+        this.selectionManager = options.host.createSelectionManager();
+        this.selectionManager.registerOnSelectCallback(() => {
+            this.syncSelectionState(this.datapointSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
+        });
+        // This is the main container for all d3 visuals
+        this.timelineContainer = this.svg.append("g");
+
+        // Adding the Axis and gridlines
+        this.yAxis = this.svg
+            .append('g')
+            .classed('yAxis', true);
+        this.xAxis = this.svg
+            .append('g')
+            .classed('xAxis', true);
+        this.xAxis_Gridlines = this.svg
+            .append('g')
+            .classed('grid', true);
     }
 
     public update(options: VisualUpdateOptions) {
-        this.settings = Visual.parseSettings(options && options.dataViews && options.dataViews[0]);
-        console.log('Visual update', options);
-        if (this.textNode) {
-            this.textNode.textContent = (this.updateCount++).toString();
-        }
-    }
+        const viewModel: BarViewModel = visualTransform(options, this.host);
+        let settings = this.barSettings = viewModel.settings;
+        this.barLabelSetting = viewModel.labelSettings;
 
-    private static parseSettings(dataView: DataView): VisualSettings {
-        return <VisualSettings>VisualSettings.parse(dataView);
+        if(viewModel.data.length == 0){
+            this.timelineContainer.remove();
+            this.timelineContainer = this.svg.append("g");
+            return;
+        }
+        let width = options.viewport.width;
+        let height = options.viewport.height;
+        this.svg.attr('width', width)
+            .attr('height', height);
+
+        let y = d3.scaleBand()
+            .domain(viewModel.data.map(d => d.category))
+            .rangeRound([0, height - settings.xAxis.fontSize - 8])
+            .padding(0.2);
+
+        let x = d3.scaleTime()
+            .domain([viewModel.minDate, viewModel.maxDate])
+            .range([settings.yAxis.width, width-10]);
+        
+        let yAxis = d3.axisLeft(y);
+        let xAxis = d3.axisBottom(x);
+
+        this.yAxis.attr('transform', 'translate(' 
+            + settings.yAxis.width + ',0)')
+            .style("font-size", settings.yAxis.fontSize)
+            .call(yAxis);
+        this.xAxis.attr('transform', 'translate(0,' 
+            + (height - settings.xAxis.fontSize - 10) + ')')
+            .style("font-size", settings.xAxis.fontSize)
+            .call(xAxis.tickFormat(d3.timeFormat("%b %y")));
+        this.xAxis_Gridlines.attr('transform', 'translate(0,' 
+            + (height - settings.xAxis.fontSize - 10) + ')')
+            .call(xAxis.tickSize(-height).tickFormat((d,i) => ""));
+        
+        let bars = this.timelineContainer
+            .selectAll('.bar')
+            .data(viewModel.data);
+        
+        let barsMerged = bars.enter()
+            .append('g').classed('bar',true)
+        
+        barsMerged.append("rect").classed("box", true);
+        barsMerged.append("text").classed("label", true);
+
+        barsMerged = barsMerged.merge(<any>bars);
+        
+        barsMerged.select('.label')
+            .attr("x", d => x(d.startDate) + (x(d.endDate) - x(d.startDate))/2)
+            .attr("y", d => y(d.category) + y.bandwidth() - (14/2))
+            .text(d => d.label)
+            .style("fill", "white")
+            .style("font-size", 14)
+            .style("text-anchor", "middle");
+        
+        barsMerged.select('.box')
+            .attr("width", d => x(d.endDate) - x(d.startDate))
+            .attr("x", d => x(d.startDate))
+            .attr("height", y.bandwidth())
+            .attr("y", d => y(d.category))
+            .style("fill-opacity", 0.8)
+            .style("fill", d => d.color.color)
+            .style("stroke", "black")
+            .style("stroke-width", 2);
+
+        this.syncSelectionState( // This helper function is called to ensure that the elements take selection into account.
+                barsMerged,
+                <ISelectionId[]>this.selectionManager.getSelectionIds()
+            );
+    
+        barsMerged.on('click', (d) => {        
+            this.selectionManager
+                .select(d.selectionId)
+                .then((ids: ISelectionId[]) => { // Important step to ensure that the selection is displayed. Otherwise it is only refreshed on another update.
+                    this.syncSelectionState(barsMerged, ids);
+                    // NOTE: in the default project creation of pbiviz
+                    // @types/d3 5.7.21 will pull in the latest d3-selection v2 which is wrong.
+                    // because of the link @types/d3-selection@* instead of @types/d3-selection@^1
+                    // https://github.com/DefinitelyTyped/DefinitelyTyped/issues/48407
+                    // Thus the d3.event will be missing.
+                })
+        });
+
+        bars.exit().remove();
     }
 
     /**
@@ -76,6 +326,97 @@ export class Visual implements IVisual {
      *
      */
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-        return VisualSettings.enumerateObjectInstances(this.settings || VisualSettings.getDefault(), options);
+        let objectName = options.objectName;
+        let objectEnumeration: VisualObjectInstance[] = [];
+
+        if (!this.barSettings ||
+            !this.barLabelSetting) {
+            return objectEnumeration;
+        }
+        switch (objectName) {
+            case 'colorSelector':
+                for (let labelColor in this.barLabelSetting) {
+                    objectEnumeration.push({
+                        objectName: objectName,
+                        displayName: this.barLabelSetting[labelColor].name,
+                        properties: {
+                            fill: {
+                                solid: {
+                                    color: this.barLabelSetting[labelColor].color
+                                }
+                            }
+                        },
+                        // propertyInstanceKind: {
+                        //     fill: VisualEnumerationInstanceKinds.ConstantOrRule
+                        // },
+                        // altConstantValueSelector: this.barLabelSetting[labelColor].selectionId.getSelector(),
+                        // selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals)
+                        selector: this.barLabelSetting[labelColor].selectionId.getSelector()
+                    });
+                }
+                break;
+                case 'xAxis':
+                    objectEnumeration.push({
+                        objectName: objectName,
+                        properties: {
+                            fontSize: this.barSettings.xAxis.fontSize,
+                        },
+                        selector: null
+                    });
+                    break;
+                case 'yAxis':
+                    objectEnumeration.push({
+                        objectName: objectName,
+                        properties: {
+                            fontSize: this.barSettings.yAxis.fontSize,
+                            width: this.barSettings.yAxis.width,
+                        },
+                        selector: null
+                    });
+                    break;
+        };
+
+        return objectEnumeration;
+    }
+
+    private syncSelectionState(
+        selection: d3.Selection<any,BarData,any,BarData>,
+        selectionIds: ISelectionId[]
+    ): void {
+        if (!selection || !selectionIds) {
+            return;
+        }
+
+        if (!selectionIds.length) {
+            const opacity: number = 1; // TODO: To store value in the settings. And pass settings object in.
+            selection.select('.box')
+                .style("fill-opacity", opacity)
+
+            return;
+        }
+
+        const self: this = this;
+
+        selection.each(function (bar: BarData) {
+            const isSelected: boolean = self.isSelectionIdInArray(selectionIds, bar.selectionId);
+
+            const opacity: number = isSelected
+                ? 1.0 // This is hardcoded now, by can set in the settings? Need to modify the function to have the setting variable passed in.
+                : 0.15;
+
+            d3.select(this).select('.box')
+                .style("fill-opacity", opacity)
+        });
+    }
+
+    // Unmodified helper function.
+    private isSelectionIdInArray(selectionIds: ISelectionId[], selectionId: ISelectionId): boolean {
+        if (!selectionIds || !selectionId) {
+            return false;
+        }
+
+        return selectionIds.some((currentSelectionId: ISelectionId) => {
+            return currentSelectionId.includes(selectionId);
+        });
     }
 }

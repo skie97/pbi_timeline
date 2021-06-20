@@ -6,33 +6,27 @@
             "kind": "Grouping"
         },
         {
-            "displayName": "Measure Data",
-            "name": "measure",
-            "kind": "Measure"
+            "displayName": "Label Data",
+            "name": "label",
+            "kind": "Grouping"
+        },
+        {
+            "displayName": "Start Date",
+            "name": "startDate",
+            "kind": "GroupingOrMeasure"
+        },
+        {
+            "displayName": "End Date",
+            "name": "endDate",
+            "kind": "GroupingOrMeasure"
         }
     ],
     "objects": {
-        "dataPoint": {
-            "displayName": "Data colors",
+        "colorSelector": {
+            "displayName": "Data Colors",
             "properties": {
-                "defaultColor": {
-                    "displayName": "Default color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "showAllDataPoints": {
-                    "displayName": "Show all",
-                    "type": {
-                        "bool": true
-                    }
-                },
                 "fill": {
-                    "displayName": "Fill",
+                    "displayName": "Color",
                     "type": {
                         "fill": {
                             "solid": {
@@ -40,14 +34,32 @@
                             }
                         }
                     }
-                },
-                "fillRule": {
-                    "displayName": "Color saturation",
+                }
+            }
+        },
+        "yAxis": {
+            "displayName": "y-Axis",
+            "properties": {
+                "fontSize": {
+                    "displayName": "Text Size",
                     "type": {
-                        "fill": {}
+                        "formatting": {
+                            "fontSize": true
+                        }
                     }
                 },
-                 "fontSize": {
+                "width": {
+                    "displayName": "Label Width",
+                    "type": {
+                        "numeric": true
+                    }
+                }
+            }
+        },
+        "xAxis": {
+            "displayName": "x-Axis",
+            "properties": {
+                "fontSize": {
                     "displayName": "Text Size",
                     "type": {
                         "formatting": {
@@ -60,20 +72,49 @@
     },
     "dataViewMappings": [
         {
-            "categorical": {
-                "categories": {
-                    "for": {
-                        "in": "category"
-                    },
-                    "dataReductionAlgorithm": {
-                        "top": {}
+            "conditions": [
+                {
+                    "category": {
+                        "max": 1
                     }
                 },
-                "values": {
+                {
+                    "label": {
+                        "max": 1
+                    }
+                },
+                {
+                    "startDate": {
+                        "max": 1
+                    }
+                },
+                {
+                    "endDate": {
+                        "max": 1
+                    }
+                }
+            ],
+            "table": {
+                "rows": {
                     "select": [
                         {
-                            "bind": {
-                                "to": "measure"
+                            "for": {
+                                "in": "category"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "label"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "startDate"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "endDate"
                             }
                         }
                     ]

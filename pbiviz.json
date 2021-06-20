@@ -1,1 +1,25 @@
-{"visual":{"name":"timeline","displayName":"timeline","guid":"timeline25A9A309BB84435ABF0A4EA6EE9CD3B6","visualClassName":"Visual","version":"1.0.0","description":"","supportUrl":"","gitHubUrl":""},"apiVersion":"2.6.0","author":{"name":"","email":""},"assets":{"icon":"assets/icon.png"},"externalJS":null,"style":"style/visual.less","capabilities":"capabilities.json","dependencies":null,"stringResources":[]}
+{
+    "visual": {
+        "name": "timeline",
+        "displayName": "Timeline",
+        "guid": "timeline25A9A309BB84435ABF0A4EA6EE9CD3B6",
+        "visualClassName": "Visual",
+        "version": "0.1.0",
+        "description": "A timeline visual to display data across a timeline.",
+        "supportUrl": "www.quantumskie.com",
+        "gitHubUrl": ""
+    },
+    "apiVersion": "3.5.0",
+    "author": {
+        "name": "Jerome Tay",
+        "email": "jerometay@quantumskie.com"
+    },
+    "assets": {
+        "icon": "assets/icon.png"
+    },
+    "externalJS": null,
+    "style": "style/visual.less",
+    "capabilities": "capabilities.json",
+    "dependencies": null,
+    "stringResources": []
+}

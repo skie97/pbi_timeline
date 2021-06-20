@@ -72,7 +72,7 @@ interface BarData {
 interface BarLabelSetting{
     name: string;
     color: string;
-    selectionId: ISelectionId;
+    selectionIds: ISelectionId[];
 }
 
 interface BarSettings {
@@ -150,9 +150,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             viewModel.labelSettings[labelText] = {
                 name: labelText,
                 color: getLabelColorByLabelText(labelText, colorPalette),
-                selectionId: host.createSelectionIdBuilder()
-                    .withTable(tableDataview, rowIndex)
-                    .createSelectionId()
+                selectionIds: []
             }
         }
         let bar:BarData = {
@@ -166,6 +164,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             color: viewModel.labelSettings[labelText]
         }
         viewModel.data.push(bar);
+        viewModel.labelSettings[labelText].selectionIds.push(bar.selectionId);
         viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
         viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
     });
@@ -351,7 +350,7 @@ export class Visual implements IVisual {
                         // },
                         // altConstantValueSelector: this.barLabelSetting[labelColor].selectionId.getSelector(),
                         // selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals)
-                        selector: this.barLabelSetting[labelColor].selectionId.getSelector()
+                        selector: this.barLabelSetting[labelColor].selectionIds[0].getSelector()
                     });
                 }
                 break;

@@ -132,6 +132,24 @@
                         }
                     ]
                 }
+            },
+            "categorical": {
+                "categories": {
+                    "select": [
+                        {
+                            "for": {
+                                "in": "label"
+                            }
+                        }
+                    ]
+                },
+                "values": {
+                    "select": [
+                        {"for": {"in": "category"}},
+                        {"for": {"in": "startDate"}},
+                        {"for": {"in": "endDate"}}
+                    ]
+                }
             }
         }
     ]

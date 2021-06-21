@@ -36,6 +36,7 @@ import VisualObjectInstance = powerbi.VisualObjectInstance;
 import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import DataView = powerbi.DataView;
 import DataViewTable = powerbi.DataViewTable;
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import * as d3 from "d3";
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
@@ -72,7 +73,7 @@ interface BarData {
 interface BarLabelSetting{
     name: string;
     color: string;
-    selectionIds: ISelectionId[];
+    selectionId: ISelectionId;
 }
 
 interface BarSettings {
@@ -116,7 +117,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
     let dataViews = options.dataViews;
     let viewModel: BarViewModel = {
         data: [],
-        labelSettings: {},
+        labelSettings: <BarLabelSetting>{},
         minDate: new Date(),
         maxDate: new Date(),
         settings: <BarSettings>{}
@@ -152,6 +153,23 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             fontSize: getValue<number>(objects, 'label', 'fontSize', defaultSettings.xAxis.fontSize)
         }
     }
+
+    // For table mappings to have a custom color for each "category" a special trick needs to be employed.
+    // you need to do an additional mapping to a category as well. Take note that all the
+    // values need to be selected, but the resultant dataView object will not have any data values.
+    // That's ok as we are getting the values from the table mapping.
+    // What's important is that this allows for another SelectionId to be created, and this time
+    // on the regular categorial item. There is however a need to figure out a reverse index
+    // to ensure that the correct categories are selected.
+    // The other trick is to map each of the datapoint's color to an object, so that the color
+    // is set from this top level setting. Hope that explains it sufficiently.
+    // All values need to be selected otherwise the table mapping doesn't work properly.
+
+    let category = dataViews[0].categorical.categories[0];
+    let reverseCatIdx = {};
+    for (let i = 0; i < category.values.length; i++) {
+        reverseCatIdx[String(category.values[i])] = i;
+    }
     debugger;
 
     tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
@@ -159,8 +177,10 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         if (!(labelText in viewModel.labelSettings)) {
             viewModel.labelSettings[labelText] = {
                 name: labelText,
-                color: getLabelColorByLabelText(labelText, colorPalette),
-                selectionIds: []
+                color: getColumnColorByIndex(category, reverseCatIdx[labelText], colorPalette),
+                selectionId: host.createSelectionIdBuilder()
+                    .withCategory(category, reverseCatIdx[labelText])
+                    .createSelectionId()
             }
         }
         let bar:BarData = {
@@ -174,7 +194,6 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             color: viewModel.labelSettings[labelText]
         }
         viewModel.data.push(bar);
-        viewModel.labelSettings[labelText].selectionIds.push(bar.selectionId);
         viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
         viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
     });
@@ -186,6 +205,30 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
     })
     viewModel.settings = barSettings;
     return viewModel;
+}
+
+function getColumnColorByIndex(
+    category: DataViewCategoryColumn,
+    index: number,
+    colorPalette: ISandboxExtendedColorPalette,
+): string {
+    if (colorPalette.isHighContrast) {
+        return colorPalette.background.value;
+    }
+
+    const defaultColor: Fill = {
+        solid: {
+            color: colorPalette.getColor(`${category.values[index]}`).value,
+        }
+    };
+
+    return getCategoricalObjectValue<Fill>(
+        category,
+        index,
+        'colorSelector',
+        'fill',
+        defaultColor
+    ).solid.color;
 }
 
 function getLabelColorByLabelText(
@@ -360,7 +403,7 @@ export class Visual implements IVisual {
                         // },
                         // altConstantValueSelector: this.barLabelSetting[labelColor].selectionId.getSelector(),
                         // selector: dataViewWildcard.createDataViewWildcardSelector(dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals)
-                        selector: this.barLabelSetting[labelColor].selectionIds[0].getSelector()
+                        selector: this.barLabelSetting[labelColor].selectionId.getSelector()
                     });
                 }
                 break;

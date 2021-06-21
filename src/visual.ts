@@ -231,21 +231,8 @@ function getColumnColorByIndex(
     ).solid.color;
 }
 
-function getLabelColorByLabelText(
-    labelText: string,
-    colorPalette: ISandboxExtendedColorPalette,
-): string {
-    if (colorPalette.isHighContrast) {
-        return colorPalette.background.value;
-    }
-
-    const defaultColor: powerbi.Fill = {
-        solid: {
-            color: colorPalette.getColor(labelText).value,
-        }
-    };
-
-    return defaultColor.solid.color;
+function blackOrWhite(color: d3.RGBColor): string { // https://stackoverflow.com/questions/35969656/how-can-i-generate-the-opposite-color-according-to-current-color
+    return (color.r * 0.299 + color.g * 0.587 + color.b * 0.114) > 186 ? '#000000' : '#FFFFFF';
 }
 
 export class Visual implements IVisual {
@@ -333,14 +320,6 @@ export class Visual implements IVisual {
 
         barsMerged = barsMerged.merge(<any>bars);
         
-        barsMerged.select('.label')
-            .attr("x", d => x(d.startDate) + (x(d.endDate) - x(d.startDate))/2)
-            .attr("y", d => y(d.category) + y.bandwidth() - (settings.label.fontSize/2))
-            .text(d => d.label)
-            .style("fill", "white")
-            .style("font-size", settings.label.fontSize)
-            .style("text-anchor", "middle");
-        
         barsMerged.select('.box')
             .attr("width", d => x(d.endDate) - x(d.startDate))
             .attr("x", d => x(d.startDate))
@@ -350,6 +329,14 @@ export class Visual implements IVisual {
             .style("fill", d => d.color.color)
             .style("stroke", "black")
             .style("stroke-width", 2);
+
+        barsMerged.select('.label')
+            .attr("x", d => x(d.startDate) + (x(d.endDate) - x(d.startDate))/2)
+            .attr("y", d => y(d.category) + y.bandwidth() - (settings.label.fontSize/2))
+            .text(d => d.label)
+            .style("fill", d => blackOrWhite(d3.color(d.color.color).rgb()))
+            .style("font-size", settings.label.fontSize)
+            .style("text-anchor", "middle");
 
         this.syncSelectionState( // This helper function is called to ensure that the elements take selection into account.
                 barsMerged,

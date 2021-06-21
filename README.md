@@ -10,3 +10,4 @@ For table mappings to have a custom color for each "category" a special trick ne
 
 ### TODO:
 - ~~Custom colours for different labels~~
+- ~~Flip the label typeface color white to black based on background color~~

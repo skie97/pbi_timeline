@@ -92,6 +92,7 @@ interface BarSettings {
     xAxis: {
         fontSize: number;
         showMonthDay: boolean;
+        showYear: boolean;
     }
 
     label: {
@@ -107,6 +108,7 @@ let defaultSettings: BarSettings = {
     xAxis: {
         fontSize: 14,
         showMonthDay: false,
+        showYear: true,
     },
     label: {
         fontSize: 14,
@@ -158,6 +160,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         xAxis: {
             fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize),
             showMonthDay: getValue<boolean>(objects, 'xAxis', 'showMonthDay', defaultSettings.xAxis.showMonthDay),
+            showYear: getValue<boolean>(objects, 'xAxis', 'showYear', defaultSettings.xAxis.showYear),
         },
         label: {
             fontSize: getValue<number>(objects, 'label', 'fontSize', defaultSettings.xAxis.fontSize)
@@ -316,7 +319,7 @@ export class Visual implements IVisual {
         this.xAxis.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .style("font-size", settings.xAxis.fontSize)
-            .call(xAxis.tickFormat(settings.xAxis.showMonthDay ? d3.timeFormat("%d %b %y") : d3.timeFormat("%b %y")));
+            .call(xAxis.tickFormat(settings.xAxis.showMonthDay ? (settings.xAxis.showYear ? d3.timeFormat("%d %b %y") : d3.timeFormat("%d %b")) : d3.timeFormat("%b %y")));
         this.xAxis_Gridlines.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .call(xAxis.tickSize(-height).tickFormat((d,i) => ""));
@@ -418,6 +421,7 @@ export class Visual implements IVisual {
                         properties: {
                             fontSize: this.barSettings.xAxis.fontSize,
                             showMonthDay: this.barSettings.xAxis.showMonthDay,
+                            showYear: this.barSettings.xAxis.showYear,
                         },
                         selector: null
                     });

@@ -72,6 +72,12 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "showYear":{
+                    "displayName": "Show Year",
+                    "type": {
+                        "bool": true
+                    }
                 }
             }
         },

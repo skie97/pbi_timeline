@@ -1,12 +1,12 @@
 {
     "dataRoles": [
         {
-            "displayName": "Category Data",
+            "displayName": "y-Axis Category",
             "name": "category",
             "kind": "Grouping"
         },
         {
-            "displayName": "Label Data",
+            "displayName": "Bar Labels",
             "name": "label",
             "kind": "Grouping"
         },

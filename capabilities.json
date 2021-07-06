@@ -158,5 +158,14 @@
                 }
             }
         }
-    ]
+    ],
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": false
+        },
+        "roles": [
+            "Tooltips"
+        ]
+    }
 }

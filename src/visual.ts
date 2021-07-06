@@ -28,6 +28,8 @@
 import "core-js/stable";
 import "./../style/visual.less";
 import powerbi from "powerbi-visuals-api";
+import "regenerator-runtime/runtime"; // This is required for tooltips to work!
+
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
@@ -37,6 +39,8 @@ import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColo
 import DataView = powerbi.DataView;
 import DataViewTable = powerbi.DataViewTable;
 import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import {createTooltipServiceWrapper, ITooltipServiceWrapper, TooltipEventArgs} from "powerbi-visuals-utils-tooltiputils";
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import * as d3 from "d3";
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
@@ -52,6 +56,9 @@ import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import Fill = powerbi.Fill;
 
 import {color, Primitive} from "d3";
+
+const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 interface BarViewModel {
     data: BarData[];
@@ -173,7 +180,6 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
     for (let i = 0; i < category.values.length; i++) {
         reverseCatIdx[String(category.values[i])] = i;
     }
-    debugger;
 
     tableDataview.rows.forEach((row: powerbi.DataViewTableRow, rowIndex: number) => {
         let labelText = String(row[labelIndex]);
@@ -246,6 +252,7 @@ export class Visual implements IVisual {
     private xAxis: Selection<SVGElement>;
     private xAxis_Gridlines: Selection<SVGElement>;
     private selectionManager: ISelectionManager;
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
     private datapointSelection: d3.Selection<d3.BaseType, any, d3.BaseType, any>;
     private barSettings: BarSettings;
     private barLabelSetting: {};
@@ -257,9 +264,12 @@ export class Visual implements IVisual {
         this.selectionManager.registerOnSelectCallback(() => {
             this.syncSelectionState(this.datapointSelection, <ISelectionId[]>this.selectionManager.getSelectionIds());
         });
+        // Creating the tooltipServiceWrapper. There is an important import statement at the top. Check the comments.
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
+        
         // This is the main container for all d3 visuals
         this.timelineContainer = this.svg.append("g");
-
+        
         // Adding the Axis and gridlines
         this.yAxis = this.svg
             .append('g')
@@ -340,6 +350,11 @@ export class Visual implements IVisual {
             .style("fill", d => blackOrWhite(d3.color(d.color.color).rgb()))
             .style("font-size", settings.label.fontSize)
             .style("text-anchor", "middle");
+
+        this.tooltipServiceWrapper.addTooltip(barsMerged,
+            (datapoint: BarData) => this.getTooltipData(datapoint),
+            (datapoint: BarData) => datapoint.selectionId
+        );
 
         this.syncSelectionState( // This helper function is called to ensure that the elements take selection into account.
                 barsMerged,
@@ -459,6 +474,18 @@ export class Visual implements IVisual {
             d3.select(this).select('.box')
                 .style("fill-opacity", opacity)
         });
+    }
+
+    private formatDateForTooltip(d: Date): String {
+        return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear() % 100} (${weekdayNames[d.getDay()]})`
+    }
+
+    private getTooltipData(value: any): VisualTooltipDataItem[] {
+        return [{
+            displayName: `${value.label}`,
+            value: `${this.formatDateForTooltip(value.startDate)} – ${this.formatDateForTooltip(value.endDate)}`,
+            header: `${value.category}`
+        }];
     }
 
     // Unmodified helper function.

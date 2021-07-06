@@ -84,6 +84,7 @@ interface BarSettings {
 
     xAxis: {
         fontSize: number;
+        showMonthDay: boolean;
     }
 
     label: {
@@ -98,6 +99,7 @@ let defaultSettings: BarSettings = {
     },
     xAxis: {
         fontSize: 14,
+        showMonthDay: false,
     },
     label: {
         fontSize: 14,
@@ -147,7 +149,8 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             fontSize: getValue<number>(objects, 'yAxis', 'fontSize', defaultSettings.yAxis.fontSize)
         },
         xAxis: {
-            fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize)
+            fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize),
+            showMonthDay: getValue<boolean>(objects, 'xAxis', 'showMonthDay', defaultSettings.xAxis.showMonthDay),
         },
         label: {
             fontSize: getValue<number>(objects, 'label', 'fontSize', defaultSettings.xAxis.fontSize)
@@ -303,7 +306,7 @@ export class Visual implements IVisual {
         this.xAxis.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .style("font-size", settings.xAxis.fontSize)
-            .call(xAxis.tickFormat(d3.timeFormat("%b %y")));
+            .call(xAxis.tickFormat(settings.xAxis.showMonthDay ? d3.timeFormat("%d %b %y") : d3.timeFormat("%b %y")));
         this.xAxis_Gridlines.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .call(xAxis.tickSize(-height).tickFormat((d,i) => ""));
@@ -399,6 +402,7 @@ export class Visual implements IVisual {
                         objectName: objectName,
                         properties: {
                             fontSize: this.barSettings.xAxis.fontSize,
+                            showMonthDay: this.barSettings.xAxis.showMonthDay,
                         },
                         selector: null
                     });

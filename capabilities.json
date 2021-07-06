@@ -66,6 +66,12 @@
                             "fontSize": true
                         }
                     }
+                },
+                "showMonthDay":{
+                    "displayName": "Show Day of Month",
+                    "type": {
+                        "bool": true
+                    }
                 }
             }
         },

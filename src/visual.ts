@@ -224,7 +224,9 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         if (a.category > b.category) return 1;
         return 0;
     })
-    barSettings.yAxis.width = viewModel.yaxis_width;
+    // This is a hack to align the setting to the calculated width. 
+    // The setting was removed, but all bindings still in place. Change this to revert.
+    barSettings.yAxis.width = viewModel.yaxis_width; 
     viewModel.settings = barSettings;
     return viewModel;
 }

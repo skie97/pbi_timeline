@@ -54,8 +54,10 @@ import { getValue, getCategoricalObjectValue } from "./objectEnumerationUtility"
 import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import Fill = powerbi.Fill;
+import { textMeasurementService as tms } from "powerbi-visuals-utils-formattingutils";
 
 import {color, Primitive} from "d3";
+import { TextProperties } from "powerbi-visuals-utils-formattingutils/lib/src/interfaces";
 
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -66,6 +68,7 @@ interface BarViewModel {
     maxDate: Date;
     labelSettings: {};
     settings: BarSettings;
+    yaxis_width: number;
 }
 
 interface BarData {
@@ -131,7 +134,8 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         labelSettings: <BarLabelSetting>{},
         minDate: new Date(),
         maxDate: new Date(),
-        settings: <BarSettings>{}
+        settings: <BarSettings>{},
+        yaxis_width: 0
     }
 
     if (!dataViews
@@ -195,6 +199,10 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
                     .createSelectionId()
             }
         }
+        let txtProp: TextProperties = {
+            fontFamily: "sans-serif",
+            fontSize: barSettings.yAxis.fontSize.toString() + "pt",
+        }
         let bar:BarData = {
             category: String(row[catIndex]),
             label: String(row[labelIndex]),
@@ -208,6 +216,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         viewModel.data.push(bar);
         viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
         viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
+        viewModel.yaxis_width = viewModel.yaxis_width < tms.measureSvgTextWidth(txtProp, bar.category) ? tms.measureSvgTextWidth(txtProp, bar.category) : viewModel.yaxis_width;
     });
 
     viewModel.data.sort((a,b) => {
@@ -215,6 +224,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         if (a.category > b.category) return 1;
         return 0;
     })
+    barSettings.yAxis.width = viewModel.yaxis_width;
     viewModel.settings = barSettings;
     return viewModel;
 }
@@ -431,7 +441,7 @@ export class Visual implements IVisual {
                         objectName: objectName,
                         properties: {
                             fontSize: this.barSettings.yAxis.fontSize,
-                            width: this.barSettings.yAxis.width,
+                            // width: this.barSettings.yAxis.width,
                         },
                         selector: null
                     });
@@ -487,7 +497,7 @@ export class Visual implements IVisual {
     private getTooltipData(value: any): VisualTooltipDataItem[] {
         return [{
             displayName: `${value.label}`,
-            value: `${this.formatDateForTooltip(value.startDate)} – ${this.formatDateForTooltip(value.endDate)}`,
+            value: `${this.formatDateForTooltip(value.startDate)} – ${this.formatDateForTooltip(value.endDate)} [${(value.endDate - value.startDate) / (1000 * 3600 * 24)} days]`,
             header: `${value.category}`
         }];
     }

@@ -60,7 +60,7 @@ import {color, Primitive} from "d3";
 import { TextProperties } from "powerbi-visuals-utils-formattingutils/lib/src/interfaces";
 
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface BarViewModel {
     data: BarData[];

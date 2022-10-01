@@ -58,6 +58,7 @@ import { textMeasurementService as tms } from "powerbi-visuals-utils-formattingu
 
 import {color, Primitive} from "d3";
 import { TextProperties } from "powerbi-visuals-utils-formattingutils/lib/src/interfaces";
+import { isNullOrEmpty } from "powerbi-visuals-utils-formattingutils/lib/src/stringExtensions";
 
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -206,16 +207,20 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
         let bar:BarData = {
             category: String(row[catIndex]),
             label: String(row[labelIndex]),
-            startDate: new Date(<string>row[startDateIndex]),
-            endDate: new Date(<string>row[endDateIndex]),
+            startDate: isNullOrEmpty(<string>row[startDateIndex]) ? null : new Date(<string>row[startDateIndex]),
+            endDate: isNullOrEmpty(<string>row[endDateIndex]) ? null : new Date(<string>row[endDateIndex]),
             selectionId: host.createSelectionIdBuilder()
                 .withTable(tableDataview, rowIndex)
                 .createSelectionId(),
             color: viewModel.labelSettings[labelText]
         }
         viewModel.data.push(bar);
-        viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
-        viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
+        if (!isNullOrEmpty(<string>row[startDateIndex])) {
+            viewModel.minDate = viewModel.minDate < bar.startDate ? viewModel.minDate : bar.startDate;
+        }
+        if (!isNullOrEmpty(<string>row[endDateIndex])) {
+            viewModel.maxDate = viewModel.maxDate > bar.endDate ? viewModel.maxDate : bar.endDate;
+        }
         viewModel.yaxis_width = viewModel.yaxis_width < tms.measureSvgTextWidth(txtProp, bar.category) ? tms.measureSvgTextWidth(txtProp, bar.category) : viewModel.yaxis_width;
     });
 

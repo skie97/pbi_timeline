@@ -97,6 +97,7 @@ interface BarSettings {
         fontSize: number;
         showMonthDay: boolean;
         showYear: boolean;
+        datetimeFormat: string;
     }
 
     label: {
@@ -113,6 +114,7 @@ let defaultSettings: BarSettings = {
         fontSize: 14,
         showMonthDay: false,
         showYear: true,
+        datetimeFormat: "",
     },
     label: {
         fontSize: 14,
@@ -166,6 +168,7 @@ function visualTransform(options: VisualUpdateOptions, host: IVisualHost): BarVi
             fontSize: getValue<number>(objects, 'xAxis', 'fontSize', defaultSettings.xAxis.fontSize),
             showMonthDay: getValue<boolean>(objects, 'xAxis', 'showMonthDay', defaultSettings.xAxis.showMonthDay),
             showYear: getValue<boolean>(objects, 'xAxis', 'showYear', defaultSettings.xAxis.showYear),
+            datetimeFormat: getValue<string>(objects, 'xAxis', 'datetimeFormat', defaultSettings.xAxis.datetimeFormat),
         },
         label: {
             fontSize: getValue<number>(objects, 'label', 'fontSize', defaultSettings.xAxis.fontSize)
@@ -333,10 +336,25 @@ export class Visual implements IVisual {
             + settings.yAxis.width + ',0)')
             .style("font-size", settings.yAxis.fontSize)
             .call(yAxis);
+        
+        let dFormat = settings.xAxis.datetimeFormat;
+        if (dFormat.length > 0) {
+            dFormat = this.formatDdate(dFormat);
+            debugger;
+        } else if (settings.xAxis.showMonthDay) {
+            if (settings.xAxis.showYear) {
+                dFormat = "%d %b %y"
+            } else {
+                dFormat = "%d %b"
+            }
+        } else {
+            dFormat = "%b %y"
+        }
+
         this.xAxis.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .style("font-size", settings.xAxis.fontSize)
-            .call(xAxis.tickFormat(settings.xAxis.showMonthDay ? (settings.xAxis.showYear ? d3.timeFormat("%d %b %y") : d3.timeFormat("%d %b")) : d3.timeFormat("%b %y")));
+            .call(xAxis.tickFormat(d3.timeFormat(dFormat)));
         this.xAxis_Gridlines.attr('transform', 'translate(0,' 
             + (height - settings.xAxis.fontSize - 10) + ')')
             .call(xAxis.tickSize(-height).tickFormat((d,i) => ""));
@@ -439,6 +457,7 @@ export class Visual implements IVisual {
                             fontSize: this.barSettings.xAxis.fontSize,
                             showMonthDay: this.barSettings.xAxis.showMonthDay,
                             showYear: this.barSettings.xAxis.showYear,
+                            datetimeFormat: this.barSettings.xAxis.datetimeFormat,
                         },
                         selector: null
                     });
@@ -495,6 +514,11 @@ export class Visual implements IVisual {
             d3.select(this).select('.box')
                 .style("fill-opacity", opacity)
         });
+    }
+
+    // TODO: Fix this function to properly parse the format string.
+    private formatDdate(s: string): string {
+        return "%H:%M"
     }
 
     private formatDateForTooltip(d: Date): String {

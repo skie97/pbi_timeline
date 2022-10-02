@@ -78,6 +78,12 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "datetimeFormat":{
+                    "displayName": "Date/Time Format",
+                    "type": {
+                        "text": true
+                    }
                 }
             }
         },

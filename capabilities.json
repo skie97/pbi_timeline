@@ -83,7 +83,8 @@
                     "displayName": "Date/Time Format",
                     "type": {
                         "text": true
-                    }
+                    },
+                    "description": "Day - dd, Month - mm/mmm, Year - yy/yyyy, Hour - hh, Minute - nn"
                 }
             }
         },

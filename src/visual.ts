@@ -59,6 +59,7 @@ import { textMeasurementService as tms } from "powerbi-visuals-utils-formattingu
 import {color, Primitive} from "d3";
 import { TextProperties } from "powerbi-visuals-utils-formattingutils/lib/src/interfaces";
 import { isNullOrEmpty } from "powerbi-visuals-utils-formattingutils/lib/src/stringExtensions";
+import { formatReg2Spec } from "./helper";
 
 const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -339,7 +340,7 @@ export class Visual implements IVisual {
         
         let dFormat = settings.xAxis.datetimeFormat;
         if (dFormat.length > 0) {
-            dFormat = this.formatDdate(dFormat);
+            dFormat = formatReg2Spec(dFormat);
             debugger;
         } else if (settings.xAxis.showMonthDay) {
             if (settings.xAxis.showYear) {
@@ -514,11 +515,6 @@ export class Visual implements IVisual {
             d3.select(this).select('.box')
                 .style("fill-opacity", opacity)
         });
-    }
-
-    // TODO: Fix this function to properly parse the format string.
-    private formatDdate(s: string): string {
-        return "%H:%M"
     }
 
     private formatDateForTooltip(d: Date): String {
